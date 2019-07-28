@@ -154,6 +154,7 @@ COMMON_SRC = \
             io/displayport_hott.c \
             io/rcdevice_cam.c \
             io/rcdevice.c \
+						io/mpdevice.c \
             io/gps.c \
             io/ledstrip.c \
             io/pidaudio.c \

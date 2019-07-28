@@ -112,6 +112,7 @@
 #include "io/pidaudio.h"
 #include "io/piniobox.h"
 #include "io/rcdevice_cam.h"
+#include "io/mpdevice.h"
 #include "io/serial.h"
 #include "io/servos.h"
 #include "io/transponder_ir.h"
@@ -908,6 +909,10 @@ void init(void)
 #ifdef USE_RCDEVICE
     rcdeviceInit();
 #endif // USE_RCDEVICE
+
+#ifdef USE_MPDEVICE
+    mpdeviceInit();
+#endif // USE_MPDEVICE
 
 #ifdef USE_MOTOR
     motorEnable();
