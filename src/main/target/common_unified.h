@@ -85,7 +85,7 @@
 //TODO: Make this actually work by making the pins configurable
 #define USE_RANGEFINDER
 #define USE_RANGEFINDER_HCSR04
-// #define USE_RANGEFINDER_TF // Disabled for use of serial port functions by MP3 player for now
+#define USE_RANGEFINDER_TF
 
 #define USE_SPI
 #define SPI_FULL_RECONFIGURABILITY
