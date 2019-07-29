@@ -20,25 +20,11 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
 
-#include "drivers/serial.h"
+#include "io/serial.h"
 #include "common/time.h"
 #include "fc/rc_modes.h"
-
-#define MPDEVICE_EQ_NORMAL 0
-#define MPDEVICE_EQ_POP 1
-#define MPDEVICE_EQ_ROCK 2
-#define MPDEVICE_EQ_JAZZ 3
-#define MPDEVICE_EQ_CLASSIC 4
-#define MPDEVICE_EQ_BASS 5
-
-#define MPDEVICE_DEVICE_U_DISK 1
-#define MPDEVICE_DEVICE_SD 2
-#define MPDEVICE_DEVICE_AUX 3
-#define MPDEVICE_DEVICE_SLEEP 4
-#define MPDEVICE_DEVICE_FLASH 5
 
 #define MPDEVICE_RECEIVED_LENGTH 10
 #define MPDEVICE_SEND_LENGTH 10
@@ -57,34 +43,22 @@ typedef struct mpdeviceSwitchState_s {
 } mpdeviceSwitchState_t;
 
 typedef enum {
-    MPDEVICE_KEY_PLAY_PAUSE = 0x0E,
-    MPDEVICE_KEY_NEXT       = 0x01,
-    MPDEVICE_KEY_PREV       = 0x02,
-    MPDEVICE_KEY_VOL_UP     = 0x04,
-    MPDEVICE_KEY_VOL_DOWN   = 0x05,
-    MPDEVICE_KEY_UNKNOWN    = 0xFF,
+    MPDEVICE_KEY_PAUSE    = 0x0E,
+    MPDEVICE_KEY_NEXT     = 0x01,
+    MPDEVICE_KEY_PREV     = 0x02,
+    MPDEVICE_KEY_VOL_UP   = 0x04,
+    MPDEVICE_KEY_VOL_DOWN = 0x05,
+    MPDEVICE_KEY_UNKNOWN  = 0xFF,
 } mediaplayerDeviceKeyEvent_e;
 
 // end of Mediaplayer Device definition
-
-typedef struct mediaplayerDevice_s {
-    serialPort_t *serialPort;
-    bool isReady;
-} mediaplayerDevice_t;
-
-extern mediaplayerDevice_t *playerDevice;
-
-void mediaplayerDeviceSendStack(mediaplayerDevice_t *device, uint8_t command);
 
 void uint16ToArray(uint16_t value, uint8_t *array);
 uint16_t calculateCheckSum(uint8_t *buffer);
 
 void mpdeviceInit(void);
-void mediaplayerDeviceInit(mediaplayerDevice_t *device);
-void mpdeviceUpdate(timeUs_t currentTimeUs);
-
 bool mpdeviceIsEnabled(void);
-void mpdevicePlayerProcess(void);
-
+void mpdeviceUpdate(timeUs_t currentTimeUs);
+void mpdevicePlayerProcess(timeUs_t currentTimeUs);
 // mp3 player button simulation
-bool mediaplayerDevicePressButton(mediaplayerDevice_t *device, mediaplayerDeviceKeyEvent_e command);
+bool mediaplayerDevicePressButton(mediaplayerDeviceKeyEvent_e command);

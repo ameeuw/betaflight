@@ -18,53 +18,45 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-
-#include "platform.h"
-#include "pg/rx.h"
-
-#include "common/crc.h"
-#include "common/maths.h"
-#include "common/streambuf.h"
-#include "fc/rc_controls.h"
-#include "fc/runtime_config.h"
 #include "io/mpdevice.h"
-
-#include "cms/cms.h"
-#include "io/beeper.h"
-
-#include "rx/rx.h"
-
-#include "drivers/time.h"
-
-#include "io/serial.h"
-
-#include "mpdevice.h"
+#include "build/debug.h"
 
 #ifdef USE_MPDEVICE
 
-#include "build/debug.h"
+serialPort_t *mpSerialPort;
+mpdeviceSwitchState_t mpSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPAUSE  + 1];
 
-static mediaplayerDevice_t mediaplayerDevice;
-mediaplayerDevice_t *playerDevice = &mediaplayerDevice;
-mpdeviceSwitchState_t mpSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPLAY  + 1];
+// init the mediaplayer device, it'll search the UART port with FUNCTION_RCDEVICE id
+void mpdeviceInit(void) {
+  serialPortFunction_e portID = FUNCTION_MPDEVICE;
+  serialPortConfig_t *portConfig = findSerialPortConfig(portID);
+  if (portConfig != NULL) {
+    mpSerialPort = openSerialPort(portConfig->identifier, portID, NULL, NULL, 9600, MODE_RXTX, SERIAL_NOT_INVERTED);
+    if (mpSerialPort != NULL) {
+
+    }
+  }
+  // mediaplayerDeviceInit(playerDevice);
+  for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
+      uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
+      mpSwitchStates[switchIndex].isActivated = true;
+  }
+}
 
 bool mpdeviceIsEnabled(void)
 {
-  return playerDevice->serialPort != NULL;
+  return mpSerialPort != NULL;
 }
 
 void mpdeviceUpdate(timeUs_t currentTimeUs)
 {
-  // deviceReceive(currentTimeUs);
-  mpdevicePlayerProcess();
+  mpdevicePlayerProcess(currentTimeUs);
 }
 
-void mpdevicePlayerProcess(void) {
-  for (boxId_e i = BOXMEDIAPLAYERPLAY; i <= BOXMEDIAPLAYERVOLD; i++) {
-    uint8_t switchIndex = i - BOXMEDIAPLAYERPLAY;
+void mpdevicePlayerProcess(timeUs_t currentTimeUs) {
+  if (currentTimeUs) {};
+  for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
+    uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
 
     if (IS_RC_MODE_ACTIVE(i)) {
       // check last state of this mode, if it's true, then ignore it.
@@ -76,8 +68,8 @@ void mpdevicePlayerProcess(void) {
       uint8_t command = MPDEVICE_KEY_UNKNOWN;
 
       switch (i) {
-      case BOXMEDIAPLAYERPLAY:
-        command = MPDEVICE_KEY_PLAY_PAUSE;
+      case BOXMEDIAPLAYERPAUSE:
+        command = MPDEVICE_KEY_PAUSE;
         break;
 
       case BOXMEDIAPLAYERNEXT:
@@ -103,13 +95,32 @@ void mpdevicePlayerProcess(void) {
       if (command != MPDEVICE_KEY_UNKNOWN) {
         // DEBUG_SET(DEBUG_MPDEVICE, 0, command);
 
-        mediaplayerDevicePressButton(playerDevice, command);
+        mediaplayerDevicePressButton(command);
         mpSwitchStates[switchIndex].isActivated = true;
       }
     } else {
       mpSwitchStates[switchIndex].isActivated = false;
     }
   }
+}
+
+bool mediaplayerDevicePressButton(mediaplayerDeviceKeyEvent_e command)
+{
+  // is this device open?
+  if (!mpSerialPort) {
+      return false;
+  }
+
+  uint8_t sendBuffer[MPDEVICE_SEND_LENGTH] = {0x7E, 0xFF, 06, 00, 01, 00, 00, 00, 00, 0xEF};
+  sendBuffer[MPDEVICE_STACK_COMMAND] = command;
+  uint16ToArray(0, sendBuffer+MPDEVICE_STACK_PARAMETER);
+  uint16ToArray(calculateCheckSum(sendBuffer), sendBuffer+MPDEVICE_STACK_CHECKSUM);
+  serialWriteBuf(mpSerialPort, sendBuffer, MPDEVICE_SEND_LENGTH);
+
+  DEBUG_SET(DEBUG_MPDEVICE, 1, (uint8_t) sendBuffer[MPDEVICE_STACK_COMMAND]);
+  DEBUG_SET(DEBUG_MPDEVICE, 2, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM]);
+  DEBUG_SET(DEBUG_MPDEVICE, 3, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM+1]);
+  return true;
 }
 
 void uint16ToArray(uint16_t value, uint8_t *array) {
@@ -123,46 +134,6 @@ uint16_t calculateCheckSum(uint8_t *buffer) {
     sum += buffer[i];
   }
   return -sum;
-}
-
-void mpdeviceInit(void) {
-  mediaplayerDeviceInit(playerDevice);
-  for (boxId_e i = BOXMEDIAPLAYERPLAY; i <= BOXMEDIAPLAYERVOLD; i++) {
-      uint8_t switchIndex = i - BOXMEDIAPLAYERPLAY;
-      mpSwitchStates[switchIndex].isActivated = true;
-  }
-}
-
-// init the mediaplayer device, it'll search the UART port with FUNCTION_RCDEVICE id
-void mediaplayerDeviceInit(mediaplayerDevice_t *device) {
-  device->isReady = false;
-  serialPortFunction_e portID = FUNCTION_MPDEVICE;
-  serialPortConfig_t *portConfig = findSerialPortConfig(portID);
-  if (portConfig != NULL) {
-    device->serialPort = openSerialPort(portConfig->identifier, portID, NULL, NULL, 9600, MODE_RXTX, SERIAL_NOT_INVERTED);
-    if (device->serialPort != NULL) {
-      device->isReady = true;
-    }
-  }
-}
-
-bool mediaplayerDevicePressButton(mediaplayerDevice_t *device, mediaplayerDeviceKeyEvent_e command)
-{
-  // is this device open?
-  if (!device->serialPort) {
-      return false;
-  }
-
-  uint8_t sendBuffer[MPDEVICE_SEND_LENGTH] = {0x7E, 0xFF, 06, 00, 01, 00, 00, 00, 00, 0xEF};
-  sendBuffer[MPDEVICE_STACK_COMMAND] = command;
-  uint16ToArray(0, sendBuffer+MPDEVICE_STACK_PARAMETER);
-  uint16ToArray(calculateCheckSum(sendBuffer), sendBuffer+MPDEVICE_STACK_CHECKSUM);
-  serialWriteBuf(device->serialPort, sendBuffer, MPDEVICE_SEND_LENGTH);
-
-  DEBUG_SET(DEBUG_MPDEVICE, 1, (uint8_t) sendBuffer[MPDEVICE_STACK_COMMAND]);
-  DEBUG_SET(DEBUG_MPDEVICE, 2, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM]);
-  DEBUG_SET(DEBUG_MPDEVICE, 3, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM+1]);
-  return true;
 }
 
 #endif
