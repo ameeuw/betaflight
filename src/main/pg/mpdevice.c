@@ -27,5 +27,5 @@ PG_REGISTER_WITH_RESET_FN(mpdeviceConfig_t, mpdeviceConfig, PG_MPDEVICE_CONFIG, 
 
 void pgResetFn_mpdeviceConfig(mpdeviceConfig_t *mpdeviceConfig)
 {
-  mpdeviceConfig->protocolVersion = 0;
+  mpdeviceConfig->lastVolume = 20;
 }

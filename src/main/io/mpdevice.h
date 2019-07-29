@@ -44,12 +44,16 @@ typedef struct mpdeviceSwitchState_s {
 
 typedef enum {
     MPDEVICE_KEY_PAUSE    = 0x0E,
+    MPDEVICE_KEY_PLAY     = 0x0D,
     MPDEVICE_KEY_NEXT     = 0x01,
     MPDEVICE_KEY_PREV     = 0x02,
     MPDEVICE_KEY_VOL_UP   = 0x04,
     MPDEVICE_KEY_VOL_DOWN = 0x05,
+    MPDEVICE_SET_VOL      = 0x06,
+    MPDEVICE_SET_EQ       = 0x07,
+    MPDEVICE_SET_LOOP_ALL = 0x11,
     MPDEVICE_KEY_UNKNOWN  = 0xFF,
-} mediaplayerDeviceKeyEvent_e;
+} mpdeviceCommands_e;
 
 // end of Mediaplayer Device definition
 
@@ -59,6 +63,6 @@ uint16_t calculateCheckSum(uint8_t *buffer);
 void mpdeviceInit(void);
 bool mpdeviceIsEnabled(void);
 void mpdeviceUpdate(timeUs_t currentTimeUs);
-void mpdevicePlayerProcess(timeUs_t currentTimeUs);
-// mp3 player button simulation
-bool mediaplayerDevicePressButton(mediaplayerDeviceKeyEvent_e command);
+void mpdeviceProcess(timeUs_t currentTimeUs);
+void mpdeviceSendCommand(mpdeviceCommands_e command, uint16_t parameter);
+bool mpdevicePressButton(mpdeviceCommands_e command);

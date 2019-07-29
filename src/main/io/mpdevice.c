@@ -20,40 +20,48 @@
 
 #include "io/mpdevice.h"
 #include "build/debug.h"
+#include "pg/mpdevice.h"
 
 #ifdef USE_MPDEVICE
 
-serialPort_t *mpSerialPort;
-mpdeviceSwitchState_t mpSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPAUSE  + 1];
+serialPort_t *mpdeviceSerialPort;
+mpdeviceSwitchState_t mpdeviceSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPAUSE  + 1];
+bool mpdevicePlaying = false;
+uint8_t mpdeviceVolume = 0;
 
 // init the mediaplayer device, it'll search the UART port with FUNCTION_RCDEVICE id
 void mpdeviceInit(void) {
   serialPortFunction_e portID = FUNCTION_MPDEVICE;
   serialPortConfig_t *portConfig = findSerialPortConfig(portID);
   if (portConfig != NULL) {
-    mpSerialPort = openSerialPort(portConfig->identifier, portID, NULL, NULL, 9600, MODE_RXTX, SERIAL_NOT_INVERTED);
-    if (mpSerialPort != NULL) {
-
+    mpdeviceSerialPort = openSerialPort(portConfig->identifier, portID, NULL, NULL, 9600, MODE_TX, SERIAL_NOT_INVERTED|SERIAL_UNIDIR);
+    if (mpdeviceSerialPort != NULL) {
+      // Initialise volume.
+      mpdeviceSendCommand(MPDEVICE_SET_VOL, mpdeviceConfig()->lastVolume);
+      // Set current volume to keep track.
+      mpdeviceVolume = mpdeviceConfig()->lastVolume;
+      // Set Loop All mode
+      mpdeviceSendCommand(MPDEVICE_SET_LOOP_ALL, 1);
     }
   }
   // mediaplayerDeviceInit(playerDevice);
   for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
       uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
-      mpSwitchStates[switchIndex].isActivated = true;
+      mpdeviceSwitchStates[switchIndex].isActivated = true;
   }
 }
 
 bool mpdeviceIsEnabled(void)
 {
-  return mpSerialPort != NULL;
+  return mpdeviceSerialPort != NULL;
 }
 
 void mpdeviceUpdate(timeUs_t currentTimeUs)
 {
-  mpdevicePlayerProcess(currentTimeUs);
+  mpdeviceProcess(currentTimeUs);
 }
 
-void mpdevicePlayerProcess(timeUs_t currentTimeUs) {
+void mpdeviceProcess(timeUs_t currentTimeUs) {
   if (currentTimeUs) {};
   for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
     uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
@@ -61,7 +69,7 @@ void mpdevicePlayerProcess(timeUs_t currentTimeUs) {
     if (IS_RC_MODE_ACTIVE(i)) {
       // check last state of this mode, if it's true, then ignore it.
       // Here is a logic to make a toggle control for this mode
-      if (mpSwitchStates[switchIndex].isActivated) {
+      if (mpdeviceSwitchStates[switchIndex].isActivated) {
         continue;
       }
 
@@ -93,34 +101,52 @@ void mpdevicePlayerProcess(timeUs_t currentTimeUs) {
       }
 
       if (command != MPDEVICE_KEY_UNKNOWN) {
-        // DEBUG_SET(DEBUG_MPDEVICE, 0, command);
-
-        mediaplayerDevicePressButton(command);
-        mpSwitchStates[switchIndex].isActivated = true;
+        mpdevicePressButton(command);
+        mpdeviceSwitchStates[switchIndex].isActivated = true;
       }
     } else {
-      mpSwitchStates[switchIndex].isActivated = false;
+      mpdeviceSwitchStates[switchIndex].isActivated = false;
     }
   }
 }
 
-bool mediaplayerDevicePressButton(mediaplayerDeviceKeyEvent_e command)
+bool mpdevicePressButton(mpdeviceCommands_e command)
 {
+  if (command == MPDEVICE_KEY_VOL_UP && (mpdeviceVolume<30)) {
+    mpdeviceVolume++;
+  }
+
+  if (command == MPDEVICE_KEY_VOL_DOWN && mpdeviceVolume>0) {
+    mpdeviceVolume--;
+  }
+
+  mpdeviceSendCommand(command, 0);
+  return true;
+}
+
+void mpdeviceSendCommand(mpdeviceCommands_e command, uint16_t parameter) {
   // is this device open?
-  if (!mpSerialPort) {
+  if (!mpdeviceSerialPort) {
       return false;
   }
 
-  uint8_t sendBuffer[MPDEVICE_SEND_LENGTH] = {0x7E, 0xFF, 06, 00, 01, 00, 00, 00, 00, 0xEF};
+  // Standard stack for serial transmission:  HEAD   VER   LEN   CMD   ACK  PARA  PARA  CHKS  CHKS   END
+  uint8_t sendBuffer[MPDEVICE_SEND_LENGTH] = {0x7E, 0xFF, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xEF};
+  // Write command to stack
   sendBuffer[MPDEVICE_STACK_COMMAND] = command;
-  uint16ToArray(0, sendBuffer+MPDEVICE_STACK_PARAMETER);
-  uint16ToArray(calculateCheckSum(sendBuffer), sendBuffer+MPDEVICE_STACK_CHECKSUM);
-  serialWriteBuf(mpSerialPort, sendBuffer, MPDEVICE_SEND_LENGTH);
 
-  DEBUG_SET(DEBUG_MPDEVICE, 1, (uint8_t) sendBuffer[MPDEVICE_STACK_COMMAND]);
-  DEBUG_SET(DEBUG_MPDEVICE, 2, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM]);
-  DEBUG_SET(DEBUG_MPDEVICE, 3, (uint8_t) sendBuffer[MPDEVICE_STACK_CHECKSUM+1]);
-  return true;
+  // If parameters were passed, write to stack
+  if (parameter == NULL) {
+    uint16ToArray(0, sendBuffer+MPDEVICE_STACK_PARAMETER);
+  } else {
+    uint16ToArray(parameter, sendBuffer+MPDEVICE_STACK_PARAMETER);
+  }
+
+  // Calculate checksum according to doc
+  uint16ToArray(calculateCheckSum(sendBuffer), sendBuffer+MPDEVICE_STACK_CHECKSUM);
+
+  // Write out to serial port
+  serialWriteBuf(mpdeviceSerialPort, sendBuffer, MPDEVICE_SEND_LENGTH);
 }
 
 void uint16ToArray(uint16_t value, uint8_t *array) {

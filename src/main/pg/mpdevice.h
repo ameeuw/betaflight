@@ -24,7 +24,7 @@
 #include "common/time.h"
 
 typedef struct mpdeviceConfig_s {
-  uint8_t protocolVersion;
+  uint8_t lastVolume;
 } mpdeviceConfig_t;
 
 PG_DECLARE(mpdeviceConfig_t, mpdeviceConfig);

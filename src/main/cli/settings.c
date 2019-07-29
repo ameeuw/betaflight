@@ -1439,7 +1439,7 @@ const clivalue_t valueTable[] = {
 
 // MPDEVICE
 #ifdef USE_MPDEVICE
-    { "mediaplayer_protocol_version", VAR_UINT8 | MASTER_VALUE, .config.minmax = { 0, 1 }, PG_MPDEVICE_CONFIG, offsetof(mpdeviceConfig_t, protocolVersion) },
+    { "mediaplayer_last_volume", VAR_UINT8 | MASTER_VALUE, .config.minmax = { 0, 30 }, PG_MPDEVICE_CONFIG, offsetof(mpdeviceConfig_t, lastVolume) },
 #endif
 
 // PG_GYRO_DEVICE_CONFIG
