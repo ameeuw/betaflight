@@ -611,7 +611,7 @@ static bool mspCommonProcessOutCommand(uint8_t cmdMSP, sbuf_t *dst, mspPostProce
 
         // battery alerts
         sbufWriteU8(dst, (uint8_t)getBatteryState());
-		
+
         sbufWriteU16(dst, getBatteryVoltage()); // in 0.01V steps
         break;
     }
@@ -2008,7 +2008,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
     case MSP_SET_RESET_CURR_PID:
         resetPidProfile(currentPidProfile);
         break;
-        
+
     case MSP_SET_SENSOR_ALIGNMENT: {
         // maintain backwards compatibility for API < 1.41
         const uint8_t gyroAlignment = sbufReadU8(src);
@@ -2505,7 +2505,7 @@ static mspResult_e mspProcessInCommand(uint8_t cmdMSP, sbuf_t *src)
 
     case MSP_SET_CF_SERIAL_CONFIG:
         {
-            uint8_t portConfigSize = sizeof(uint8_t) + sizeof(uint16_t) + (sizeof(uint8_t) * 4);
+            uint8_t portConfigSize = sizeof(uint8_t) + sizeof(uint32_t) + (sizeof(uint8_t) * 4);
 
             if (dataSize % portConfigSize != 0) {
                 return MSP_RESULT_ERROR;
