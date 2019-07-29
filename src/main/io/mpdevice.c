@@ -130,17 +130,13 @@ void mpdeviceSendCommand(mpdeviceCommands_e command, uint16_t parameter) {
       return false;
   }
 
-  // Standard stack for serial transmission:  HEAD   VER   LEN   CMD   ACK  PARA  PARA  CHKS  CHKS   END
+  // Standard stack for MP3 serial command:   HEAD   VER   LEN   CMD   ACK  PARA  PARA  CHKS  CHKS   END
   uint8_t sendBuffer[MPDEVICE_SEND_LENGTH] = {0x7E, 0xFF, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0xEF};
   // Write command to stack
   sendBuffer[MPDEVICE_STACK_COMMAND] = command;
 
-  // If parameters were passed, write to stack
-  if (parameter == NULL) {
-    uint16ToArray(0, sendBuffer+MPDEVICE_STACK_PARAMETER);
-  } else {
-    uint16ToArray(parameter, sendBuffer+MPDEVICE_STACK_PARAMETER);
-  }
+  // Write parameters to stack
+  uint16ToArray(parameter, sendBuffer+MPDEVICE_STACK_PARAMETER);
 
   // Calculate checksum according to doc
   uint16ToArray(calculateCheckSum(sendBuffer), sendBuffer+MPDEVICE_STACK_CHECKSUM);
