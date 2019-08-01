@@ -21,13 +21,15 @@
 #include "io/mpdevice.h"
 #include "build/debug.h"
 #include "pg/mpdevice.h"
+#include "drivers/time.h"
 
 #ifdef USE_MPDEVICE
 
 serialPort_t *mpdeviceSerialPort;
-mpdeviceSwitchState_t mpdeviceSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPAUSE  + 1];
+mpdeviceSwitchState_t mpdeviceSwitchStates[BOXMEDIAPLAYERVOLD - BOXMEDIAPLAYERPLAYPAUSE  + 1];
 bool mpdevicePlaying = false;
 uint8_t mpdeviceVolume = 0;
+mpdeviceCommands_e lastMpdeviceCommand = MPDEVICE_KEY_PAUSE;
 
 // init the mediaplayer device, it'll search the UART port with FUNCTION_RCDEVICE id
 void mpdeviceInit(void) {
@@ -42,11 +44,13 @@ void mpdeviceInit(void) {
       mpdeviceVolume = mpdeviceConfig()->lastVolume;
       // Set Loop All mode
       mpdeviceSendCommand(MPDEVICE_SET_LOOP_ALL, 1);
+      // Stop playing
+      mpdeviceSendCommand(MPDEVICE_KEY_PAUSE, 0);
     }
   }
   // mediaplayerDeviceInit(playerDevice);
-  for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
-      uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
+  for (boxId_e i = BOXMEDIAPLAYERPLAYPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
+      uint8_t switchIndex = i - BOXMEDIAPLAYERPLAYPAUSE;
       mpdeviceSwitchStates[switchIndex].isActivated = true;
   }
 }
@@ -58,13 +62,30 @@ bool mpdeviceIsEnabled(void)
 
 void mpdeviceUpdate(timeUs_t currentTimeUs)
 {
+  mpdeviceUpdateOSD();
   mpdeviceProcess(currentTimeUs);
+}
+
+void mpdeviceUpdateOSD()
+{
+  static timeMs_t lastBlinkStart = 0;
+  timeMs_t blinkDuration = 500;
+
+  if (millis() > (lastBlinkStart + blinkDuration)) {
+    if (osdWarnGetState(OSD_WARNING_MPDEVICE)) {
+      osdWarnSetState(OSD_WARNING_MPDEVICE, false);
+      lastMpdeviceCommand = MPDEVICE_KEY_UNKNOWN;
+    } else if (lastMpdeviceCommand != MPDEVICE_KEY_UNKNOWN) {
+      osdWarnSetState(OSD_WARNING_MPDEVICE, true);
+      lastBlinkStart =  millis();
+    }
+  }
 }
 
 void mpdeviceProcess(timeUs_t currentTimeUs) {
   if (currentTimeUs) {};
-  for (boxId_e i = BOXMEDIAPLAYERPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
-    uint8_t switchIndex = i - BOXMEDIAPLAYERPAUSE;
+  for (boxId_e i = BOXMEDIAPLAYERPLAYPAUSE; i <= BOXMEDIAPLAYERVOLD; i++) {
+    uint8_t switchIndex = i - BOXMEDIAPLAYERPLAYPAUSE;
 
     if (IS_RC_MODE_ACTIVE(i)) {
       // check last state of this mode, if it's true, then ignore it.
@@ -76,8 +97,12 @@ void mpdeviceProcess(timeUs_t currentTimeUs) {
       uint8_t command = MPDEVICE_KEY_UNKNOWN;
 
       switch (i) {
-      case BOXMEDIAPLAYERPAUSE:
-        command = MPDEVICE_KEY_PAUSE;
+      case BOXMEDIAPLAYERPLAYPAUSE:
+        if (mpdevicePlaying) {
+          command = MPDEVICE_KEY_PAUSE;
+        } else {
+          command = MPDEVICE_KEY_PLAY;
+        }
         break;
 
       case BOXMEDIAPLAYERNEXT:
@@ -112,12 +137,20 @@ void mpdeviceProcess(timeUs_t currentTimeUs) {
 
 bool mpdevicePressButton(mpdeviceCommands_e command)
 {
-  if (command == MPDEVICE_KEY_VOL_UP && (mpdeviceVolume<30)) {
+  if (command == MPDEVICE_KEY_VOL_UP && mpdeviceVolume < 30) {
     mpdeviceVolume++;
   }
 
-  if (command == MPDEVICE_KEY_VOL_DOWN && mpdeviceVolume>0) {
+  if (command == MPDEVICE_KEY_VOL_DOWN && mpdeviceVolume > 0) {
     mpdeviceVolume--;
+  }
+
+  if (command == MPDEVICE_KEY_NEXT ||command == MPDEVICE_KEY_PREV || command == MPDEVICE_KEY_PLAY) {
+    mpdevicePlaying = true;
+  }
+
+  if (command == MPDEVICE_KEY_PAUSE) {
+    mpdevicePlaying = false;
   }
 
   mpdeviceSendCommand(command, 0);
@@ -143,6 +176,8 @@ void mpdeviceSendCommand(mpdeviceCommands_e command, uint16_t parameter) {
 
   // Write out to serial port
   serialWriteBuf(mpdeviceSerialPort, sendBuffer, MPDEVICE_SEND_LENGTH);
+
+  lastMpdeviceCommand = sendBuffer[MPDEVICE_STACK_COMMAND];
 }
 
 void uint16ToArray(uint16_t value, uint8_t *array) {

@@ -25,6 +25,7 @@
 #include "io/serial.h"
 #include "common/time.h"
 #include "fc/rc_modes.h"
+#include "osd/osd.h"
 
 #define MPDEVICE_RECEIVED_LENGTH 10
 #define MPDEVICE_SEND_LENGTH 10
@@ -43,8 +44,8 @@ typedef struct mpdeviceSwitchState_s {
 } mpdeviceSwitchState_t;
 
 typedef enum {
-    MPDEVICE_KEY_PAUSE    = 0x0E,
     MPDEVICE_KEY_PLAY     = 0x0D,
+    MPDEVICE_KEY_PAUSE    = 0x0E,
     MPDEVICE_KEY_NEXT     = 0x01,
     MPDEVICE_KEY_PREV     = 0x02,
     MPDEVICE_KEY_VOL_UP   = 0x04,
@@ -57,12 +58,15 @@ typedef enum {
 
 // end of Mediaplayer Device definition
 
+extern mpdeviceCommands_e lastMpdeviceCommand;
+
 void uint16ToArray(uint16_t value, uint8_t *array);
 uint16_t calculateCheckSum(uint8_t *buffer);
 
 void mpdeviceInit(void);
 bool mpdeviceIsEnabled(void);
 void mpdeviceUpdate(timeUs_t currentTimeUs);
+void mpdeviceUpdateOSD();
 void mpdeviceProcess(timeUs_t currentTimeUs);
 void mpdeviceSendCommand(mpdeviceCommands_e command, uint16_t parameter);
 bool mpdevicePressButton(mpdeviceCommands_e command);

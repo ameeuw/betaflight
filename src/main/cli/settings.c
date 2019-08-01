@@ -1166,7 +1166,9 @@ const clivalue_t valueTable[] = {
 #ifdef USE_RX_LINK_QUALITY_INFO
     { "osd_warn_link_quality",      VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_WARNING_LINK_QUALITY,     PG_OSD_CONFIG, offsetof(osdConfig_t, enabledWarnings)},
 #endif
-
+#ifdef USE_MPDEVICE
+    { "osd_warn_mpdevice_status",   VAR_UINT32  | MASTER_VALUE | MODE_BITSET, .config.bitpos = OSD_WARNING_MPDEVICE,         PG_OSD_CONFIG, offsetof(osdConfig_t, enabledWarnings)},
+#endif
     { "osd_rssi_alarm",             VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 100 }, PG_OSD_CONFIG, offsetof(osdConfig_t, rssi_alarm) },
 #ifdef USE_RX_LINK_QUALITY_INFO
     { "osd_link_quality_alarm",     VAR_UINT16  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 300 }, PG_OSD_CONFIG, offsetof(osdConfig_t, link_quality_alarm) },

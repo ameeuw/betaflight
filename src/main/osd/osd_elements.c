@@ -89,6 +89,7 @@
 #include "io/beeper.h"
 #include "io/gps.h"
 #include "io/vtx.h"
+#include "io/mpdevice.h"
 
 #include "osd/osd.h"
 #include "osd/osd_elements.h"
@@ -1376,6 +1377,43 @@ static void osdElementWarnings(osdElementParms_t *element)
         tfp_sprintf(element->buff, "  * * * *");
         return;
     }
+
+#ifdef USE_MPDEVICE
+    // Blink media player command - TODO: I am aware, that this is complete abuse of the OSD warnings - thats why its lowest priority
+    if (osdWarnGetState(OSD_WARNING_MPDEVICE)) {
+        char command[OSD_WARNINGS_MAX_SIZE];
+        switch (lastMpdeviceCommand) {
+            case MPDEVICE_KEY_PLAY:
+                strcpy(command, "   PLAY");
+                break;
+            case MPDEVICE_KEY_PAUSE:
+                strcpy(command, "   PAUSE");
+                break;
+            case MPDEVICE_KEY_NEXT:
+                strcpy(command, "    NEXT");
+                break;
+
+            case MPDEVICE_KEY_PREV:
+                strcpy(command, "  PREVIOUS");
+                break;
+
+            case MPDEVICE_KEY_VOL_UP:
+                strcpy(command, " VOLUME UP");
+                break;
+
+            case MPDEVICE_KEY_VOL_DOWN:
+                strcpy(command, "VOLUME DOWN");
+                break;
+            default:
+                strcpy(command, "*");
+                break;
+
+        }
+        tfp_sprintf(element->buff, command);
+        SET_BLINK(OSD_WARNINGS);
+        return;
+    }
+#endif // USE_MPDEVICE
 
 }
 
