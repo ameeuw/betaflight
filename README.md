@@ -1,3 +1,92 @@
+## Stupid ideas in FPV: MP3 player in a drone
+
+Being in the midst of writing my Ph.D. thesis, I am currently very susceptible to mindless distractions.
+This fork of Betaflight includes a driver for an MP3 player module by DFRobot.
+There are incredibly cheap cloned boards out there:
+https://www.aliexpress.com/wholesale?SearchText=dfplayer+mini
+
+Documentation is available from DFRobot:
+https://wiki.dfrobot.com/DFPlayer_Mini_SKU_DFR0299
+
+The player module has an SD card slot and can play thousands of MP3 files from an SD card up to 2gb.
+
+### Wiring
+With the driver, you can wire the Tx pin of a spare UART (or softserial) of your flight controller to the Rx pin of the player module and control the player functions.
+
+![Media player connected to flight controller](img/mpdevice.png "Media player connected to flight controller")
+
+
+### Configuration
+The media player controls can be selected in the __Ports__ tab in the Betaflight-Configurator.
+The controls are assigned in the __Modes__ tab, just like the Runcam control buttons.
+In order to set the according parameters you have to download my fork of the betaflight-configurator:
+https://github.com/ameeuw/betaflight-configurator
+
+![Betaflight ports tab](img/betaflight-ports.png "Betaflight ports tab")
+
+Select the _MP3 Player (DFRobot Protocol)_ option in the _Peripherals_ combobox of the respective UART and hit __Save and Reboot__.
+
+![Betaflight modes tab](img/betaflight-modes.png "Betaflight modes tab")
+
+Set the mode switches according to your preference.
+I suggest that you have at least _MP3 Player Play/Pause_ and _MP3 Player Next_ mapped to a switch, so that you can start, stop, and skip playback of your tracks.
+
+Available controls are:
+- Play / Pause
+- Next Track
+- Previous Track
+- Volume Up
+- Volume Down
+
+As the keys are buttons, I re-used the code for toggle recognition from the rcdevice-cam driver, so behaviour should be the same.
+For control of my Runcam Split, I exchanged two of my FrSky Taranis' 3-position switches (SD and SC) with momentary 3-position switches.
+I am very happy to have suggestions how control could be alternatively done.
+I have thought about using the _Adjustments_ to control volume, for example, but I haven't gotten nowhere close to realising that.
+
+### Video
+
+I made a cut from my Commander's DVR. The quality is terrible since there is some audible DVR artefacts and the video is just b/w... no idea what was wrong.
+However, its working nicely and its really a lot of fun - especially if you have some of your favourites on there and can try to hit lines along the beat.
+
+[![MP3 Player Betaflight](https://img.youtube.com/vi/sNxayvIdhLs/0.jpg)](https://www.youtube.com/watch?v=sNxayvIdhLs)
+
+### Further thoughts
+
+The player module puts out line-level signal.
+This can be directly connected to VTXs with an audio pin.
+I use an ATX03 from Eachine and it works flawlessly.
+
+The output is not directly suitable for VTXs with a microphone input (such as the FuriousFPV).
+Here is a circuit of an attenuator (and impedance matcher?) to adapt line-level to microphone level (found here: https://www.youtube.com/watch?v=aovtGu_pG4w&t=420s).
+<!-- [![MP3 Player Betaflight](https://img.youtube.com/vi/aovtGu_pG4w/0.jpg)](https://www.youtube.com/watch?v=aovtGu_pG4w&t=420s) -->
+
+![Line to microphone adapter](img/line-to-microphone-adapter.png "Line to microphone adapter schematic")
+
+I love the internet for things like this.
+
+However, I feel that the nicest way to connect the audio would be to use a VTX with an exposed module (such as the Eachine TX805) and find the line-in pin.
+If we wire up the DACL and DACR pin from the player module to the line-in pin of the VTX's module, we could control the volume of the player if we want to hear more prop noise from the microphone, and turn the volume up to listen to the music.
+Since I do not know which one is the line-in pin (anybody?), I have not used this VTX yet.
+
+![Eachine TX805 Front](img/tx805front.png "TX805 Front")
+
+![Eachine TX805 Back](img/tx805back.png "TX805 Back")
+
+
+<!--
+### Aomway Commander and Airpods
+To listen to the high quality tunes coming in from the quad, I did a mod on my Aomway Commander googles and added a bluetooth audio transmitter module.
+These modules can also be found super cheaply from Aliexpress:
+https://www.aliexpress.com/item/33040897766.html
+
+The module is connected to ground, left-, and right-audio pins of the RCA jack.
+The 5v pin of the USB plug is wired to the 5v rail on the Commander motherboard and powers up when the goggles are powered.
+The module goes into pairing mode each time it is powered, so that unpaired headphones connect immediately.
+-->
+
+
+# BETAFLIGHT README
+
 ![Important Notice: Betaflight 4.0 will be the last release to include support for STM32F3 based flight controllers. (This includes all boards with 'F3' in the name.)](docs/assets/images/stm32f3_retirement_notice.svg)
 
 (Please see the [note](https://github.com/betaflight/betaflight#end-of-active-development-for-stm32f3-based-flight-controllers) below.)
